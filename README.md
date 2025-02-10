@@ -8,3 +8,10 @@ The project was carried out within the framework of the discipline "Introduction
 4. Discipline: Introduction to Intelligent Systems
 5. Department of Intelligent Systems and Cybersecurity, Astana IT University
 7. February 2025
+
+- Summary of Key Algorithms Used
+1. Localization:	Odometry-based tracking
+2. Path Planning:	A* Algorithm
+3. Path Smoothing:	Bézier Curve Interpolation
+4. Motion Control:	Angle-based rotation + speed control
+65. Obstacle Avoidance:	Proximity-based reactive control
