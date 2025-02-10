@@ -37,10 +37,14 @@ plotGoalsAndObstacles(goals, obstacles);
 % Plot robot's initial position
 robotPlot = plot(robotPos(1), robotPos(2), 'bo', 'MarkerSize', 8, 'MarkerFaceColor', 'b');
 
+% Initialize the path line
+pathLine = plot(robotPos(1), robotPos(2), 'b-', 'LineWidth', 1.5);
+pathPoints = robotPos; % Initialize path points with the starting position
+
 % Main loop to navigate through goals
 for goalIdx = 1:numGoals
     % Move the robot from the current position to the next goal
-    [robotPos, odometryPos, robotAngle] = navigateToGoal(robotPos, goals(goalIdx, :), obstacles, robotSpeed, mapSize, robotPlot, robotRadius, goalIdx, robotAngle, odometryPos);
+    [robotPos, odometryPos, robotAngle, pathPoints] = navigateToGoal(robotPos, goals(goalIdx, :), obstacles, robotSpeed, mapSize, robotPlot, robotRadius, goalIdx, robotAngle, odometryPos, pathPoints, pathLine);
 end
 
 % End of simulation
@@ -79,18 +83,106 @@ function plotGoalsAndObstacles(goals, obstacles)
 end
 
 % Function to navigate robot to the goal using A* and dynamic motion
-function [robotPos, odometryPos, robotAngle] = navigateToGoal(robotPos, goal, obstacles, robotSpeed, mapSize, robotPlot, robotRadius, goalIdx, robotAngle, odometryPos)
-    % Use A* pathfinding to get a path from current position to goal
+function [robotPos, odometryPos, robotAngle, pathPoints] = navigateToGoal(robotPos, goal, obstacles, robotSpeed, mapSize, robotPlot, robotRadius, goalIdx, robotAngle, odometryPos, pathPoints, pathLine)    % Use A* pathfinding to get a path from current position to goal
     path = aStarPathfinding(robotPos, goal, obstacles, mapSize);
     
-    if isempty(path)
+    % Apply Bézier curve smoothing
+    if ~isempty(path)
+    smoothPath = bezierSmoothPath(path);
+
+    else
         disp('No path found!');
         return;
     end
+
+    % Kinematics parameters
+    maxSpeed = 0.2;        % Maximum movement speed
+    maxTurnRate = 0.1;     % Maximum turn rate per step
+    turnTolerance = 0.05;  % Allowable angle error before moving forward
+    goalThreshold = 0.2;   % Distance threshold to determine goal completion
     
+    % Iterate through the path **only once**
+    for i = 1:size(smoothPath, 1)
+        nextPos = smoothPath(i, :);
+        
+        while true
+            % Compute direction and target angle
+            direction = nextPos - robotPos;
+            targetAngle = atan2(direction(2), direction(1));
+            
+            % Compute angle difference
+            angleError = targetAngle - robotAngle;
+            angleError = mod(angleError + pi, 2 * pi) - pi; % Normalize angle
+            
+            % Apply gradual turning
+            if abs(angleError) > turnTolerance
+                turnRate = sign(angleError) * min(maxTurnRate, abs(angleError));
+                robotAngle = robotAngle + turnRate;
+            else
+                % Move forward once aligned
+                distance = norm(direction);
+                speed = min(maxSpeed, distance);
+                robotPos = robotPos + speed * [cos(robotAngle), sin(robotAngle)];
+            end
+            
+            % Ensure robot stays within the map
+            robotPos = max(min(robotPos, mapSize), 1);
+            
+            % **Append new robot position to pathPoints to avoid duplication**
+            pathPoints = [pathPoints; robotPos];
+            
+            % **Update visualization only once per movement step**
+            set(robotPlot, 'XData', robotPos(1), 'YData', robotPos(2));
+            set(pathLine, 'XData', pathPoints(:, 1), 'YData', pathPoints(:, 2));
+            
+            drawnow; % Refresh visualization instantly
+            pause(0.02); % Adjust speed
+            
+            % **Stop when the robot reaches the next waypoint**
+            if norm(robotPos - nextPos) < 0.1
+                break;
+            end
+        end
+    end
+
+    % **FINAL GOAL REACHED CHECK: Stop unnecessary returns**
+    if norm(robotPos - goal) < goalThreshold
+        disp(['Goal ', num2str(goalIdx), ' reached!']);
+        return;
+    end
+
     % Iterate through the path
-    for i = 1:size(path, 1)
-        robotPos = path(i, :);
+    for i = 1:size(smoothPath, 1) - 1
+    % Get the current and next target position
+    currentPos = smoothPath(i, :);
+    nextPos = smoothPath(i + 1, :);
+    
+    % Compute direction and step size
+    direction = nextPos - currentPos;
+    stepSize = 0.05; % Adjust step size for smoother movement
+    numSteps = ceil(norm(direction) / stepSize); % Compute required steps
+    
+    % Move gradually from currentPos to nextPos
+    for step = 1:numSteps
+        % Interpolate between the points
+        robotPos = currentPos + (direction * (step / numSteps));
+        
+        % Update robot plot
+        set(robotPlot, 'XData', robotPos(1), 'YData', robotPos(2));
+        
+        % Append new point to path
+        pathPoints = [pathPoints; robotPos];
+        set(pathLine, 'XData', pathPoints(:, 1), 'YData', pathPoints(:, 2));
+        
+        % Update robot plot
+        set(robotPlot, 'XData', robotPos(1), 'YData', robotPos(2));
+
+        % Update path line
+        set(pathLine, 'XData', pathPoints(:, 1), 'YData', pathPoints(:, 2));
+        drawnow; % Refresh visualization instantly
+        pause(0.02); % Small pause to slow down execution
+    end
+end
         
         % Implement obstacle avoidance
         robotPos = reactiveAvoidance(robotPos, obstacles, robotSpeed, mapSize, robotPlot, robotRadius);
@@ -110,9 +202,19 @@ function [robotPos, odometryPos, robotAngle] = navigateToGoal(robotPos, goal, ob
         % Update the robot position in the plot
         set(robotPlot, 'XData', robotPos(1), 'YData', robotPos(2));
         
-        % Pause to slow down the movement
-        pause(0.5); % Slow down the robot
-    end
+        % Update the path points
+        pathPoints = [pathPoints; robotPos];
+        
+        % Update the path line
+        set(pathLine, 'XData', pathPoints(:, 1), 'YData', pathPoints(:, 2));
+        
+        % Update robot plot
+        set(robotPlot, 'XData', robotPos(1), 'YData', robotPos(2));
+
+        % Update path line
+        set(pathLine, 'XData', pathPoints(:, 1), 'YData', pathPoints(:, 2));
+        drawnow; % Refresh visualization instantly
+        pause(0.02); % Small pause to slow down execution
 end
 
 % Function for A* pathfinding using a priority queue
@@ -193,6 +295,18 @@ function path = reconstructPath(cameFrom, currentPos)
     while isKey(cameFrom, num2str(currentPos))
         currentPos = cameFrom(num2str(currentPos));
         path = [currentPos; path];
+    end
+end
+
+function smoothPath = bezierSmoothPath(path)
+    t = linspace(0, 1, 100); % Parameter for the curve
+    n = size(path, 1) - 1; % Degree of the Bézier curve
+
+    % Compute Bernstein polynomials
+    smoothPath = zeros(length(t), 2);
+    for i = 0:n
+        B = nchoosek(n, i) .* (t .^ i) .* ((1 - t) .^ (n - i));
+        smoothPath = smoothPath + B' * path(i + 1, :);
     end
 end
 
