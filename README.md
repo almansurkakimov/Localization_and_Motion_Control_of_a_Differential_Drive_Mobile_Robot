@@ -9,7 +9,7 @@ The project was carried out within the framework of the discipline "Introduction
 5. Department of Intelligent Systems and Cybersecurity, Astana IT University
 7. February 2025
 
-- Summary of Key Algorithms Used
+- Algorithms Used
 1. Localization:	Odometry-based tracking
 2. Path Planning:	A* Algorithm
 3. Path Smoothing:	Bézier Curve Interpolation
