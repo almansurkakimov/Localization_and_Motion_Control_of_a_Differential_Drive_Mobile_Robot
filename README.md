@@ -14,9 +14,9 @@ The project was carried out within the framework of the discipline "Introduction
 2. Path Planning:	A* Algorithm
 3. Path Smoothing:	Bézier Curve Interpolation
 4. Motion Control:	Angle-based rotation + speed control
-65. Obstacle Avoidance:	Proximity-based reactive control
+5. Obstacle Avoidance:	Proximity-based reactive control
 
-1. Initialization and Setup
+Initialization and Setup
 The program starts by clearing the workspace and closing any open figures to ensure a fresh environment. It then defines key parameters such as:
 
 Map size: A 10x10 grid.
