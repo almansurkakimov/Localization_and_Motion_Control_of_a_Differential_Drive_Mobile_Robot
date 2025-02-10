@@ -6,6 +6,5 @@ The project was carried out within the framework of the discipline "Introduction
 2. Student: Almansur Kakimov
 3. Instructor: Sanzhar Kusdavletov
 4. Discipline: Introduction to Intelligent Systems
-5. Department of Intelligent Systems and Cybersecurity
-6. Astana IT University
+5. Department of Intelligent Systems and Cybersecurity, Astana IT University
 7. February 2025
